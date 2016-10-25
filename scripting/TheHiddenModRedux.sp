@@ -17,7 +17,7 @@
 #pragma newdecls required
 
 #define PLUGIN_NAME "The Hidden Mod Redux"
-#define PLUGIN_VERSION "1.15"
+#define PLUGIN_VERSION "1.20b"
 
 //int gvars
 int g_iTheCurrentHidden = 0;
@@ -34,11 +34,11 @@ bool g_bActivated = false;
 bool g_bTimerDie = false;
 bool g_bTimerDieTick = false;
 bool g_bLateLoad;
+bool g_bJumped = false;
 //float gvars
 float g_fHiddenStamina;
 float g_fHiddenInvisibility;
 float g_fHiddenVisible;
-float g_fHiddenJump;
 float g_fHiddenBomb;
 float g_fTickInterval;
 //handles
@@ -63,23 +63,20 @@ ConVar g_hCV_hidden_allowrazorback;
 ConVar g_hCV_hidden_hpperplayer;
 ConVar g_hCV_hidden_hpperkill;
 ConVar g_hCV_hidden_hpbase;
-ConVar g_hCV_hidden_jumptime;
-ConVar g_hCV_hidden_pouncetime;
+ConVar g_hCV_hidden_stamina;
 ConVar g_hCV_hidden_starvationtime;
 ConVar g_hCV_hidden_bombtime;
 ConVar g_hCV_hidden_bombletcount;
 ConVar g_hCV_hidden_bombletmagnitude;
 ConVar g_hCV_hidden_bombletvertvel;
 ConVar g_hCV_hidden_bombletspreadvel;
-ConVar g_hCV_hidden_bombletvariation;
 ConVar g_hCV_hidden_bombthrowspeed;
 ConVar g_hCV_hidden_bombdetonationdelay;
 Handle g_hWeaponEquip;
 Handle g_hGameConfig;
 //cvar globals
 int g_iCV_hidden_tauntdamage;
-float g_fCV_hidden_jumptime;
-float g_fCV_hidden_pouncetime;
+float g_fCV_hidden_stamina;
 float g_fCV_hidden_starvationtime;
 float g_fCV_hidden_bombtime;
 float g_fCV_hidden_visible_damage; 
@@ -149,16 +146,14 @@ public void OnPluginStart()
 	g_hCV_hidden_hpbase = CreateConVar("sm_thehidden_hpbase", "300", "Amount of hp used for calculating the Hidden's starting/max hp.", FCVAR_NONE, true, 1.0, true, 10000.0);
 	g_hCV_hidden_hpperplayer = CreateConVar("sm_thehidden_hpincreaseperplayer", "70", "This amount of hp, multiplied by the number of players, plus the base hp, equals The Hidden's hp.", FCVAR_NONE, true, 0.0, true, 1000.0);
 	g_hCV_hidden_hpperkill = CreateConVar("sm_thehidden_hpincreaseperkill", "50", "Amount of hp the Hidden gets back after he kills a player. This value changes based on victim's class.", FCVAR_NONE, true, 0.0, true, 1000.0);
-	g_hCV_hidden_bombletcount = CreateConVar("sm_thehidden_bombletcount", "10", "Amount of bomb clusters(bomblets) inside a cluster bomb.", FCVAR_NONE, true, 1.0, true, 30.0);
-	g_hCV_hidden_bombletmagnitude = CreateConVar("sm_thehidden_bombletmagnitude", "50.0", "Magnitude of a bomblet.", FCVAR_NONE, true, 1.0, true, 1000.0);
-	g_hCV_hidden_bombletspreadvel = CreateConVar("sm_thehidden_bombletspreadvel", "60.0", "Parameter(spread velocity) for a randomized direction, bomblets are going to use.", FCVAR_NONE, true, 1.0, true, 500.0);
-	g_hCV_hidden_bombletvariation = CreateConVar("sm_thehidden_bombletvariation", "1.5", "Parameter(variation) for a randomized direction, bomblets are going to use.", FCVAR_NONE, true, 0.1, true, 10.0);
-	g_hCV_hidden_bombletvertvel = CreateConVar("sm_thehidden_bombletvertvel", "90.0", "Parameter(vertical velocity) for a randomized direction, bomblets are going to use.", FCVAR_NONE, true, 1.0, true, 500.0);
+	g_hCV_hidden_bombletcount = CreateConVar("sm_thehidden_bombletcount", "8", "Amount of bomb clusters(bomblets) inside a cluster bomb.", FCVAR_NONE, true, 1.0, true, 30.0);
+	g_hCV_hidden_bombletmagnitude = CreateConVar("sm_thehidden_bombletmagnitude", "60.0", "Magnitude of a bomblet.", FCVAR_NONE, true, 1.0, true, 1000.0);
+	g_hCV_hidden_bombletspreadvel = CreateConVar("sm_thehidden_bombletspreadvel", "60.0", "Parameter(spread velocity) for a randomized direction, bomblets are going to use.", FCVAR_NONE, true, 1.0, true, 200.0);
+	g_hCV_hidden_bombletvertvel = CreateConVar("sm_thehidden_bombletvertvel", "90.0", "Parameter(vertical velocity) for a randomized direction, bomblets are going to use.", FCVAR_NONE, true, 1.0, true, 200.0);
 	g_hCV_hidden_bombthrowspeed = CreateConVar("sm_thehidden_bombthrowspeed", "2000.0", "Cluster bomb throw speed.", FCVAR_NONE, true, 1.0, true, 10000.0);
 	g_hCV_hidden_bombdetonationdelay = CreateConVar("sm_thehidden_bombdetonationdelay", "1.8", "Delay of the cluster bomb detonation.", FCVAR_NONE, true, 0.1, true, 100.0);
-	g_hCV_hidden_jumptime = CreateConVar("sm_thehidden_jumptime", "0.1", "The Hidden's special jump's cooldown.", FCVAR_NONE, true, 0.1, true, 100.0);
-	g_hCV_hidden_pouncetime = CreateConVar("sm_thehidden_pouncetime", "12.0", "The Hidden's pounce's max duration.", FCVAR_NONE, true, 1.0, true, 1000.0);
-	g_hCV_hidden_starvationtime = CreateConVar("sm_thehidden_starvationtime", "100.0", "Time til the Hidden dies without killing.", FCVAR_NONE, true, 10.0, true, 1000.0);
+	g_hCV_hidden_stamina = CreateConVar("sm_thehidden_stamina", "5.0", "The Hidden's max stamina.", FCVAR_NONE, true, 1.0, true, 1000.0);
+	g_hCV_hidden_starvationtime = CreateConVar("sm_thehidden_starvationtime", "100.0", "Time until the Hidden dies without killing.", FCVAR_NONE, true, 10.0, true, 1000.0);
 	g_hCV_hidden_bombtime = CreateConVar("sm_thehidden_bombtime", "20.0", "Cluster bomb cooldown.", FCVAR_NONE, true, 1.0, true, 1000.0);
 
 	g_fTickInterval = GetTickInterval(); // 0.014999 default
@@ -226,9 +221,9 @@ public void OnPluginEnd()
 		}
 	}
 	
-	CreateTimer(2.0, Timer_Win);
+	CreateTimer(2.0, Timer_Win, _, TIMER_FLAG_NO_MAPCHANGE);
 }
-
+//if steamtools is running
 #if defined _steamtools_included
 public void OnLibraryAdded(const char[] name) 
 {
@@ -239,7 +234,7 @@ public void OnLibraryAdded(const char[] name)
 	
 }
 #endif
-
+//if steamtools isnt running anymore
 #if defined _steamtools_included
 public void OnLibraryRemoved(const char[] name) 
 {
@@ -249,7 +244,7 @@ public void OnLibraryRemoved(const char[] name)
 	}
 }
 #endif
-
+//change some tf2 cvars
 public void OnConfigsExecuted() 
 {
 	SetConVarInt(FindConVar("tf_arena_use_queue"), 0);
@@ -259,8 +254,8 @@ public void OnConfigsExecuted()
 	SetConVarInt(FindConVar("mp_autoteambalance"), 0);
 	SetConVarInt(FindConVar("tf_dropped_weapon_lifetime"), 0);
 	SetConVarInt(FindConVar("tf_classlimit"), 0);
+	SetConVarInt(FindConVar("tf_playergib"), 0);
 }
-
 //attempt to activate the plugin on mapstart, change game too
 public void OnMapStart() 
 {
@@ -298,8 +293,7 @@ public void OnClientPutInServer(int client)
 //load these only when the game starts
 void LoadCvars()
 {
-	g_fCV_hidden_jumptime = GetConVarFloat(g_hCV_hidden_jumptime);
-	g_fCV_hidden_pouncetime = GetConVarFloat(g_hCV_hidden_pouncetime);
+	g_fCV_hidden_stamina = GetConVarFloat(g_hCV_hidden_stamina);
 	g_fCV_hidden_starvationtime = GetConVarFloat(g_hCV_hidden_starvationtime);
 	g_fCV_hidden_bombtime = GetConVarFloat(g_hCV_hidden_bombtime);
 	g_fCV_hidden_visible_damage = GetConVarFloat(g_hCV_hidden_visible_damage); 
@@ -316,11 +310,11 @@ void ActivatePlugin()
 		return;
 	}
 	
-	CreateTimer(10.0, Timer_Win);
+	CreateTimer(20.0, Timer_Win, _, TIMER_FLAG_NO_MAPCHANGE);
 	
 	g_bActivated = true;
 	g_bTimerDieTick = false;
-	g_hTick = CreateTimer(0.1, Timer_Tick, _, TIMER_REPEAT);
+	g_hTick = CreateTimer(0.2, Timer_Tick, _, TIMER_REPEAT);
 	
 	HookEvent("teamplay_round_win", teamplay_round_win);
 	HookEvent("teamplay_round_start", teamplay_round_start);
@@ -328,7 +322,7 @@ void ActivatePlugin()
 
 	HookEvent("player_spawn", player_spawn);
 	HookEvent("player_hurt", player_hurt);
-	HookEvent("player_death", player_death);
+	HookEvent("player_death", player_death, EventHookMode_Pre);
 	HookEvent("player_upgradedobject", player_upgradedobject);
 
 	AddCommandListener(Cmd_build, "build");
@@ -378,7 +372,7 @@ void DeactivatePlugin()
 	g_bActivated = false;
 	g_bTimerDieTick = true;
 	g_hTick = null;
-	CreateTimer(1.0, Timer_EnableCps);
+	CreateTimer(1.0, Timer_EnableCps, _, TIMER_FLAG_NO_MAPCHANGE);
 	
 	UnhookEvent("teamplay_round_win", teamplay_round_win);
 	UnhookEvent("teamplay_round_start", teamplay_round_start);
@@ -386,7 +380,7 @@ void DeactivatePlugin()
 
 	UnhookEvent("player_spawn", player_spawn);
 	UnhookEvent("player_hurt", player_hurt);
-	UnhookEvent("player_death", player_death);
+	UnhookEvent("player_death", player_death, EventHookMode_Pre);
 	UnhookEvent("player_upgradedobject", player_upgradedobject);
 	
 	RemoveCommandListener(Cmd_build, "build");
@@ -416,7 +410,6 @@ void DeactivatePlugin()
 	}
 	#endif
 }
-
 //block some buildings upgrades
 public void player_upgradedobject(Handle event, const char[] name, bool dontBroadcast)
 {
@@ -457,7 +450,7 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float vel[3
 	
 	if (client == g_iTheCurrentHidden) 
 	{
-		if (g_bHiddenSticky && g_fHiddenStamina < (g_fCV_hidden_pouncetime-0.5)) 
+		if (g_bHiddenSticky) 
 		{
 			if (buttons & IN_JUMP > 0)
 			{
@@ -470,7 +463,7 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float vel[3
 			TF2_RemoveCondition(client, TFCond_Cloaked);
 			AddHiddenVisible(0.75);
 			
-			if (IsFakeClient(client) && GetRandomInt(0,10) == 0)
+			if (IsFakeClient(client) && GetRandomInt(0,10) == 9)
 			{
 				HiddenBombTrigger();
 			}
@@ -483,7 +476,7 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float vel[3
 			if (!IsFakeClient(client))
 			{
 				buttons&=~IN_ATTACK2;
-				HiddenSpecial();
+				HiddenSuperJump();
 				return Plugin_Changed;
 			}
 		}
@@ -515,7 +508,7 @@ public Action Cmd_build(int client, char[] cmd, int args)
 	
 	return Plugin_Continue;
 }
-
+//block taunts
 public Action Cmd_taunt(int client, char[] cmd, int args)
 {
 	if (!GetConVarBool(g_hCV_hidden_enabled)) 
@@ -531,7 +524,7 @@ public Action Cmd_taunt(int client, char[] cmd, int args)
 	
 	return Plugin_Continue;
 }
-//player_team in tf2
+//team selection
 public Action Cmd_join(int client, char[] cmd, int args)
 {
 	if (!GetConVarBool(g_hCV_hidden_enabled)) 
@@ -555,31 +548,24 @@ public Action Cmd_join(int client, char[] cmd, int args)
 		}
 		else
 		{
-			PrintCenterText(client, "You can't join that team! Switched to team IRIS.");
-
-			if (g_bPlaying == false)
-			{
-				SetEntProp(client, Prop_Send, "m_lifeState", 2);
-				ChangeClientTeam(client, 2);
-				TF2_SetPlayerClass(client, view_as<TFClassType>(GetRandomInt(1,5)));
-				SetEntProp(client, Prop_Send, "m_lifeState", 0);
-				if (IsPlayerHere(client) && IsPlayerAlive(client))
-				{
-					CreateTimer(0.1, Timer_Respawn, client, TIMER_FLAG_NO_MAPCHANGE);
-				}
-			}
-			else
+			if (StrEqual(arg1, "auto", true))
 			{
 				ChangeClientTeam(client, 2);
 				ShowVGUIPanel(client, "class_red");
 			}
-			
+			else
+			{
+				PrintCenterText(client, "You can't join that team! Switched to team IRIS.");
+				ChangeClientTeam(client, 2);
+				ShowVGUIPanel(client, "class_red");
+			}	
 			return Plugin_Handled;
 		}
 	}
 
 	return Plugin_Continue;
 }
+//class change
 public Action Cmd_class(int client, char[] cmd, int args)
 {
 	if (!GetConVarBool(g_hCV_hidden_enabled)) 
@@ -587,30 +573,63 @@ public Action Cmd_class(int client, char[] cmd, int args)
 		return Plugin_Continue;
 	}
 
-	if (args > 1) 
+	if (args > 1 || !IsPlayerHere(client)) 
 	{
 		return Plugin_Handled;
 	}
 
-	char arg1[32];
-	GetCmdArg(1, arg1, sizeof(arg1));
-		
-	if (StrEqual(arg1, "scout", true) || StrEqual(arg1, "soldier", true) || (StrEqual(arg1, "pyro", true) && GetConVarBool(g_hCV_hidden_allowpyro)) || (StrEqual(arg1, "heavyweapons", true) && GetConVarBool(g_hCV_hidden_allowheavy)) || (StrEqual(arg1, "engineer", true) && GetConVarBool(g_hCV_hidden_allowengineer)) || StrEqual(arg1, "demoman", true) || StrEqual(arg1, "medic", true) || StrEqual(arg1, "sniper", true))
+	int team = GetClientTeam(client);
+	if (team < 3)
 	{
-		return Plugin_Continue;
+		char arg1[32];
+		GetCmdArg(1, arg1, sizeof(arg1));
+			
+		if (StrEqual(arg1, "scout", true) || StrEqual(arg1, "soldier", true) || (StrEqual(arg1, "pyro", true) && GetConVarBool(g_hCV_hidden_allowpyro)) || (StrEqual(arg1, "heavyweapons", true) && GetConVarBool(g_hCV_hidden_allowheavy)) || (StrEqual(arg1, "engineer", true) && GetConVarBool(g_hCV_hidden_allowengineer)) || StrEqual(arg1, "demoman", true) || StrEqual(arg1, "medic", true) || StrEqual(arg1, "sniper", true))
+		{
+			return Plugin_Continue;
+		}
+		else
+		{
+			if (StrEqual(arg1, "random", true))
+			{
+				if (g_bPlaying == false)
+				{
+					SetEntProp(client, Prop_Send, "m_lifeState", 2);
+					TF2_SetPlayerClass(client, view_as<TFClassType>(GetRandomInt(1,5)));
+					SetEntProp(client, Prop_Send, "m_lifeState", 0);
+					if (IsPlayerAlive(client))
+					{
+						CreateTimer(0.1, Timer_Respawn, client, TIMER_FLAG_NO_MAPCHANGE);
+					}
+				}
+				else
+				{
+					if (!IsPlayerAlive(client))
+					{
+						TF2_SetPlayerClass(client, view_as<TFClassType>(GetRandomInt(1,5)));
+					}
+					else
+					{
+						ForcePlayerSuicide(client);
+						TF2_SetPlayerClass(client, view_as<TFClassType>(GetRandomInt(1,5)));
+					}
+				}
+			}
+			else
+			{
+				PrintCenterText(client, "You can't pick that class!");
+				ShowVGUIPanel(client, team == 3 ? "class_blue" : "class_red");		
+			}
+			return Plugin_Handled;
+		}
 	}
 	else
 	{
-		if (IsPlayerHere(client))
-		{
-			PrintCenterText(client, "You can't pick that class!");
-			int team = GetClientTeam(client);
-			ShowVGUIPanel(client, team == 3 ? "class_blue" : "class_red");
-		}
+		PrintCenterText(client, "You can't change class on this team!");
 		return Plugin_Handled;
 	}
 }
-//on take damage hook. needed for saving damage values and calculating who did most damage.
+//on take damage hook
 public Action OnTakeDamage(int client, int &attacker, int &inflictor, float &damage, int &damagetype, int &weapon, float damageForce[3], float damagePosition[3], int damagecustom)
 {
 	if (!GetConVarBool(g_hCV_hidden_enabled)) 
@@ -637,7 +656,7 @@ public Action OnTakeDamage(int client, int &attacker, int &inflictor, float &dam
 		}		
 	}
 	
-	return Plugin_Continue; // Make sure player damage is received
+	return Plugin_Continue;
 }
 //a player got hurt, only care about the hidden
 public void player_hurt(Handle event, const char[] name, bool dontBroadcast) 
@@ -664,7 +683,7 @@ public void player_hurt(Handle event, const char[] name, bool dontBroadcast)
 
 	int attacker = GetClientOfUserId(GetEventInt(event, "attacker"));	
 	
-	if (attacker != g_iTheCurrentHidden) // if player is not trigger_hurt or dealing damage to himself
+	if (attacker != g_iTheCurrentHidden)
 	{
 		if (damage > g_iHiddenCurrentHp) 
 		{
@@ -672,7 +691,7 @@ public void player_hurt(Handle event, const char[] name, bool dontBroadcast)
 		}
 		else
 		{
-			g_iDamageToHidden[attacker] += damage; // increase damage dealt to thehidden
+			g_iDamageToHidden[attacker] += damage;
 		}
 	}	
 }
@@ -701,7 +720,7 @@ public void player_spawn(Handle event, const char[] name, bool dontBroadcast)
 		}
 		else
 		{
-			GiveHiddenPowers(client);
+			RequestFrame(GiveHiddenPowers, client);
 			SetEntProp(client, Prop_Send, "m_bGlowEnabled", 0);
 		}
 		
@@ -781,19 +800,20 @@ public void player_spawn(Handle event, const char[] name, bool dontBroadcast)
 		}
 		
 		SetEntProp(client, Prop_Send, "m_bGlowEnabled", 1);
+		TF2_AddCondition(client, TFCond_HalloweenInHell, -1.0);
 	}
 }
 //a player died
-public void player_death(Handle event, const char[] name, bool dontBroadcast) 
+public Action player_death(Handle event, const char[] name, bool dontBroadcast) 
 {
 	if (!GetConVarBool(g_hCV_hidden_enabled)) 
 	{
-		return;
+		return Plugin_Continue;
 	}
 
 	if (!g_bPlaying)
 	{
-		return;
+		return Plugin_Continue;
 	}	
 	
 	int victim = GetClientOfUserId(GetEventInt(event, "userid"));
@@ -801,51 +821,62 @@ public void player_death(Handle event, const char[] name, bool dontBroadcast)
 	
 	if (victim != g_iTheCurrentHidden)
 	{
+		SetEntProp(victim, Prop_Send, "m_bGlowEnabled", 0);
+		SetEntProp(victim, Prop_Send, "m_lifeState", 1);
+		
 		if (attacker == g_iTheCurrentHidden)
 		{
 			g_fHiddenInvisibility = g_fCV_hidden_starvationtime;
 			int hpperkill = GetConVarInt(g_hCV_hidden_hpperkill);
-
+			int customkill = GetEventInt(event, "customkill");
+			int weaponi = GetEventInt(event, "weaponid");
+			
 			if (IsPlayerHere(g_iTheCurrentHidden) && IsPlayerAlive(g_iTheCurrentHidden))
 			{
-				TFClassType classv = TF2_GetPlayerClass(victim);
-				
-				switch (classv)
-				{
-					case TFClass_Scout, TFClass_Sniper, TFClass_Engineer:
+				if (customkill != TF_CUSTOM_BACKSTAB && weaponi == TF_WEAPON_KNIFE)
+				{				
+					TFClassType classv = TF2_GetPlayerClass(victim);
+					
+					switch (classv)
 					{
-						g_iHiddenCurrentHp += hpperkill; 
-						
-						if (g_iHiddenCurrentHp > g_iHiddenHpMax) 
+						case TFClass_Scout, TFClass_Sniper, TFClass_Engineer:
 						{
-							g_iHiddenCurrentHp = g_iHiddenHpMax;
-						}			
-					}
-					case TFClass_Heavy, TFClass_Soldier:
-					{
-						g_iHiddenCurrentHp += hpperkill+20;
-						
-						if (g_iHiddenCurrentHp > g_iHiddenHpMax) 
+							g_iHiddenCurrentHp += hpperkill; 
+							
+							if (g_iHiddenCurrentHp > g_iHiddenHpMax) 
+							{
+								g_iHiddenCurrentHp = g_iHiddenHpMax;
+							}			
+						}
+						case TFClass_Heavy, TFClass_Soldier:
 						{
-							g_iHiddenCurrentHp = g_iHiddenHpMax;
+							g_iHiddenCurrentHp += hpperkill+20;
+							
+							if (g_iHiddenCurrentHp > g_iHiddenHpMax) 
+							{
+								g_iHiddenCurrentHp = g_iHiddenHpMax;
+							}
+						}
+						default:
+						{
+							g_iHiddenCurrentHp += hpperkill+10;
+							
+							if (g_iHiddenCurrentHp > g_iHiddenHpMax) 
+							{
+								g_iHiddenCurrentHp = g_iHiddenHpMax;
+							}
 						}
 					}
-					default:
-					{
-						g_iHiddenCurrentHp += hpperkill+10;
-						
-						if (g_iHiddenCurrentHp > g_iHiddenHpMax) 
-						{
-							g_iHiddenCurrentHp = g_iHiddenHpMax;
-						}
-					}
+					
+					CPrintToChatAll("{mediumseagreen}[%s] {crimson}The Hidden{powderblue} killed {crimson}%N{powderblue} and ate his body to restore some health!", PLUGIN_NAME, victim);
+					CreateTimer(1.0, Timer_Dissolve, victim, TIMER_FLAG_NO_MAPCHANGE);
 				}
-			}
-
-			if (g_iTheCurrentHidden)
-			{
-				CPrintToChatAll("{mediumseagreen}[%s] {crimson}The Hidden{powderblue} killed {crimson}%N{powderblue} and ate his body to restore some health!", PLUGIN_NAME, victim);
-				CreateTimer(1.0, Timer_Dissolve, victim, TIMER_FLAG_NO_MAPCHANGE);
+				else
+				{
+					int dbit = GetEventInt(event, "damagebits") | DMG_ALWAYSGIB;
+					SetEventInt(event, "damagebits", dbit);
+					CPrintToChatAll("{mediumseagreen}[%s] {crimson}The Hidden{powderblue} killed {crimson}%N{powderblue}!", PLUGIN_NAME, victim);
+				}
 			}
 			
 			if (GetAliveEnemiesCount() <= 1)
@@ -899,8 +930,9 @@ public void player_death(Handle event, const char[] name, bool dontBroadcast)
 			}
 		} 
 	}
+	
+	return Plugin_Continue;
 }
-
 //the game frame, less = better
 public void OnGameFrame()
 {	
@@ -909,7 +941,7 @@ public void OnGameFrame()
 		return;
 	}
 
-	if (IsPlayerHere(g_iTheCurrentHidden) && GetClientTeam(g_iTheCurrentHidden) >= 2 && IsPlayerAlive(g_iTheCurrentHidden))
+	if (IsPlayerHere(g_iTheCurrentHidden) && IsPlayerAlive(g_iTheCurrentHidden))
 	{
 		if (GetClientHealth(g_iTheCurrentHidden) > 0) 
 		{
@@ -928,7 +960,6 @@ public void OnGameFrame()
 		}
 		
 		SetEntPropFloat(g_iTheCurrentHidden, Prop_Send, "m_flMaxspeed", 400.0);
-		int eflags = GetEntityFlags(g_iTheCurrentHidden);
 		
 		if (g_fHiddenInvisibility > 0.0) 
 		{
@@ -957,13 +988,13 @@ public void OnGameFrame()
 		{
 			HiddenUnstick();
 			
-			if (g_fHiddenStamina < g_fCV_hidden_pouncetime) 
+			if (g_fHiddenStamina < g_fCV_hidden_stamina) 
 			{
-				g_fHiddenStamina += g_fTickInterval/2;
+				g_fHiddenStamina += g_fTickInterval/4;
 				
-				if (g_fHiddenStamina > g_fCV_hidden_pouncetime) 
+				if (g_fHiddenStamina > g_fCV_hidden_stamina) 
 				{
-					g_fHiddenStamina = g_fCV_hidden_pouncetime;
+					g_fHiddenStamina = g_fCV_hidden_stamina;
 				}
 			}
 		} 
@@ -980,19 +1011,6 @@ public void OnGameFrame()
 			else if (GetEntityMoveType(g_iTheCurrentHidden) == MOVETYPE_WALK) 
 			{
 				SetEntityMoveType(g_iTheCurrentHidden, MOVETYPE_NONE);
-			}
-		}
-		
-		if (eflags & FL_ONGROUND || g_bHiddenSticky) 
-		{
-			if (g_fHiddenJump > 0.0) 
-			{
-				g_fHiddenJump -= g_fTickInterval;
-				
-				if (g_fHiddenJump < 0.0) 
-				{
-					g_fHiddenJump = 0.0;
-				}
 			}
 		}
 		
@@ -1024,11 +1042,9 @@ public void OnGameFrame()
 		{
 			TF2_RemoveCondition(g_iTheCurrentHidden, TFCond_Cloaked);
 		}
-		
-		SetEntPropFloat(g_iTheCurrentHidden, Prop_Send, "m_flCloakMeter", g_fHiddenInvisibility/g_fCV_hidden_starvationtime*100.0);
 	} 	
 }
-
+//conditions
 public void TF2_OnConditionAdded(int client, TFCond condition)
 {
 	if (client != g_iTheCurrentHidden)
@@ -1079,16 +1095,14 @@ public void TF2_OnConditionAdded(int client, TFCond condition)
 		}
 	}
 }
-
 //someone won, reset the hidden
 public void teamplay_round_win(Handle event, const char[] name, bool dontBroadcast) 
 {
 	g_bPlaying = true;
 	g_bTimerDie = true;
-	CreateTimer(1.0, Timer_ResetHidden);
+	CreateTimer(0.5, Timer_ResetHidden, _, TIMER_FLAG_NO_MAPCHANGE);
 }
-
-//round start, players cant move but they can change classes - gets called very often
+//round start - players cant move but they can change classes
 public void teamplay_round_start(Handle event, const char[] name, bool dontBroadcast) 
 {
 	if (!CanPlay()) 
@@ -1100,13 +1114,14 @@ public void teamplay_round_start(Handle event, const char[] name, bool dontBroad
 	g_bPlaying = false;
 	CreateTimer(0.1, Timer_NewGame, _, TIMER_FLAG_NO_MAPCHANGE);
 }
-
+//arena start - players can move, cant change classes
 public Action arena_round_start(Handle event, const char[] name, bool dontBroadcast) 
 {
 	Client_RespawnAll(true);
 	g_bPlaying = true;
 	g_bHiddenStarvation = false;
 }
+//a beacon for the hidden bot
 public Action Timer_Beacon(Handle timer, any client)
 {
 	if (!IsPlayerHereLoopCheck(client) || !IsPlayerAlive(client) || g_bTimerDie == true)
@@ -1120,7 +1135,7 @@ public Action Timer_Beacon(Handle timer, any client)
 	
 	if (g_iBeamSprite > -1 && g_iHaloSprite > -1)
 	{
-		int Color[4]	= {0, 0, 255, 255};
+		int Color[4] = {0, 0, 255, 255};
 		TE_SetupBeamRingPoint(vec, 10.0, 400.0, g_iBeamSprite, g_iHaloSprite, 0, 15, 0.5, 5.0, 0.0, Color, 10, 0);
 		TE_SendToAll();
 	}
@@ -1133,7 +1148,6 @@ public Action Timer_Beacon(Handle timer, any client)
 	
 	return Plugin_Continue;
 }
-
 //disable control points
 public Action Timer_DisableCps(Handle timer) 
 {
@@ -1175,7 +1189,7 @@ public Action Timer_EnableCps(Handle timer)
 		}
 	} 
 }
-//timer callback for int game
+//timer callback for new game
 public Action Timer_NewGame(Handle timer) 
 {
 	if (g_iTheCurrentHidden != 0) 
@@ -1198,7 +1212,7 @@ public Action Timer_NewGame(Handle timer)
 		g_hTick = CreateTimer(0.1, Timer_Tick, _, TIMER_REPEAT);
 	}
 }
-//timer callback for resetting hidden
+//timer callback for resetting the hidden
 public Action Timer_ResetHidden(Handle timer) 
 {
 	ResetHidden();
@@ -1216,14 +1230,52 @@ public Action NotifyHidden(Handle timer, any client)
 		PrintHintText(g_iTheCurrentHidden, "READ THE CHAT FOR HELP");
 	}
 }
+public Action Timer_Jumped(Handle timer, any data)
+{
+	g_bJumped = false;
+}
+//force round restart
 public Action Timer_Win(Handle timer, any data) 
 {
-	SetConVarInt(FindConVar("mp_restartgame"), 3);
+	CPrintToChatAll("{mediumseagreen}[%s]{powderblue} Killing all bots.", PLUGIN_NAME);
+	for (int i = 1; i <= MaxClients; i++)
+	{
+		if (IsPlayerHereLoopCheck(i) && IsFakeClient(i) && IsPlayerAlive(i))
+		{
+			Client_TakeDamage(i, i, 99999, DMG_CRUSH, "");
+		}
+	}
 }
 //ragdol dissolve timer
-public Action Timer_Dissolve(Handle timer, any data) 
+public Action Timer_Dissolve(Handle timer, any client) 
 {
-	Dissolve(data, 3);
+	if (!IsPlayerHere(client)) 
+	{
+		return;
+	}
+	
+	int ragdoll = GetEntPropEnt(client, Prop_Send, "m_hRagdoll");
+	
+	if (ragdoll < 0) 
+	{
+		return;
+	}
+	
+	char dname[32];
+	char dtype[32];
+	Format(dname, sizeof(dname), "dis_%d", client);
+	Format(dtype, sizeof(dtype), "%d", 3);
+	int ent = CreateEntityByName("env_entity_dissolver");
+	
+	if (IsValidEntity(ent)) 
+	{
+		DispatchKeyValue(ragdoll, "targetname", dname);
+		DispatchKeyValue(ent, "dissolvetype", dtype);
+		DispatchKeyValue(ent, "target", dname);
+		DispatchKeyValue(ent, "magnitude", "10");
+		AcceptEntityInput(ent, "Dissolve", ragdoll, ragdoll);
+		AcceptEntityInput(ent, "Kill");
+	}
 }
 //hud timer
 public Action Timer_Tick(Handle timer) 
@@ -1233,7 +1285,7 @@ public Action Timer_Tick(Handle timer)
 		return Plugin_Stop;
 	}
 	
-	ShowHiddenHP(0.3);
+	ShowHiddenHP(0.4);
 	return Plugin_Continue;
 }
 //force next hidden?
@@ -1309,37 +1361,6 @@ public void OnClientDisconnect(int client)
 		ResetHidden();
 	}
 }
-//dissolve the ragdoll
-void Dissolve(int client, int type) 
-{
-	if (!IsPlayerHere(client)) 
-	{
-		return;
-	}
-	
-	int ragdoll = GetEntPropEnt(client, Prop_Send, "m_hRagdoll");
-	
-	if (ragdoll < 0) 
-	{
-		return;
-	}
-	
-	char dname[32];
-	char dtype[32];
-	Format(dname, sizeof(dname), "dis_%d", client);
-	Format(dtype, sizeof(dtype), "%d", type);
-	int ent = CreateEntityByName("env_entity_dissolver");
-	
-	if (IsValidEntity(ent)) 
-	{
-		DispatchKeyValue(ragdoll, "targetname", dname);
-		DispatchKeyValue(ent, "dissolvetype", dtype);
-		DispatchKeyValue(ent, "target", dname);
-		DispatchKeyValue(ent, "magnitude", "10");
-		AcceptEntityInput(ent, "Dissolve", ragdoll, ragdoll);
-		AcceptEntityInput(ent, "Kill");
-	}
-}
 //is there enough players? can we play?
 bool CanPlay() 
 {
@@ -1354,7 +1375,7 @@ bool CanPlay()
 		return false;
 	}
 }
-//sm lib for total players - modified
+//number of players
 int Client_Total()
 {
 	int numClients = 0;
@@ -1371,7 +1392,7 @@ int Client_Total()
 	
 	return numClients;
 }
-
+//players on blue
 int Client_TotalBlue()
 {
 	int numClients = 0;
@@ -1388,8 +1409,7 @@ int Client_TotalBlue()
 	
 	return numClients;
 }
-
-//sm lib for a random person
+//get a random player
 int Client_GetRandom()
 {
 	int[] clients = new int[MaxClients];
@@ -1407,7 +1427,7 @@ int Client_GetRandom()
 	int random = GetRandomInt(0, num-1);
 	return clients[random];
 }
-//sm lib for clients count
+//clients count
 int Client_Get(int[] clients)
 {
 	int x = 0;
@@ -1443,9 +1463,8 @@ void SelectHidden()
 	g_iHiddenHpMax = GetConVarInt(g_hCV_hidden_hpbase)+((Client_Total()-1)*GetConVarInt(g_hCV_hidden_hpperplayer));
 	g_iHiddenCurrentHp = g_iHiddenHpMax;
 	g_fHiddenVisible = 0.0;
-	g_fHiddenStamina = g_fCV_hidden_pouncetime;
+	g_fHiddenStamina = g_fCV_hidden_stamina;
 	g_bHiddenSticky = false;
-	g_fHiddenJump = 0.0;
 	g_fHiddenInvisibility = g_fCV_hidden_starvationtime;
 	g_fHiddenBomb = 0.0;
 	int forcedcommand = GetClientOfUserId(g_iForceCommandHidden);
@@ -1478,23 +1497,18 @@ void SelectHidden()
 	CPrintToChat(g_iTheCurrentHidden, "{mediumseagreen}[%s]{powderblue} Your own bombs can't hurt you. Every kill restores you some health and decreases your hunger. You take no fall damage. You still have your sapper.", PLUGIN_NAME);
 	CreateTimer(3.0, NotifyHidden, g_iTheCurrentHidden, TIMER_FLAG_NO_MAPCHANGE );
 }
-//dash/superjump
-bool HiddenSuperJump() 
+//superjump
+void HiddenSuperJump() 
 {
-	if (g_iTheCurrentHidden == 0) 
+	if (g_iTheCurrentHidden == 0 || HiddenStick() != -1 || g_fHiddenStamina < 1.0) 
 	{
-		return false;
+		return;
 	}
 	
-	if (g_fHiddenJump > 0.0)
+	if (!(GetEntityFlags(g_iTheCurrentHidden) & FL_ONGROUND) || g_bJumped)
 	{
-		return false;
+		return;
 	}
-	
-	g_fHiddenJump = g_fCV_hidden_jumptime;
-	float f_HiddenVisiblePounce = g_fCV_hidden_visible_pounce;
-	
-	HiddenUnstick();
 	
 	float ang[3];
 	float vel[3];
@@ -1502,40 +1516,20 @@ bool HiddenSuperJump()
 	GetEntPropVector(g_iTheCurrentHidden, Prop_Data, "m_vecAbsVelocity", vel);
 	
 	float tmp[3];
-	
 	GetAngleVectors(ang, tmp, NULL_VECTOR, NULL_VECTOR);
 	
-	vel[0] += tmp[0]*1000.0;
-	vel[1] += tmp[1]*1000.0;
-	vel[2] += tmp[2]*1000.0;
+	vel[0] += tmp[0]*700.0;
+	vel[1] += tmp[1]*700.0;
+	vel[2] += tmp[2]*1400.0;
 	
-	int flags=GetEntityFlags(g_iTheCurrentHidden);
-	
-	if (flags & FL_ONGROUND)
-	{
-		flags &= ~FL_ONGROUND;
-	}
-	
-	SetEntityFlags(g_iTheCurrentHidden, flags);
 	TeleportEntity(g_iTheCurrentHidden, NULL_VECTOR, NULL_VECTOR, vel);
-	AddHiddenVisible(f_HiddenVisiblePounce);
-	
-	return true;
+	AddHiddenVisible(g_fCV_hidden_visible_pounce);
+	g_fHiddenStamina -= 1.0;
+	g_bJumped = true;
+	CreateTimer(1.0, Timer_Jumped, _, TIMER_FLAG_NO_MAPCHANGE);
+	return;
 }
-//dash/superjump
-void HiddenSpecial() 
-{
-	if (g_iTheCurrentHidden == 0) 
-	{
-		return;
-	}
-	
-	if (HiddenStick() == -1) 
-	{
-		HiddenSuperJump();
-	}
-}
-//pounce on
+//stick to the walls
 int HiddenStick() 
 {
 	if (g_iTheCurrentHidden == 0) 
@@ -1556,17 +1550,15 @@ int HiddenStick()
 		TR_GetEndPosition(pos2, ray);
 		if (GetVectorDistance(pos, pos2)<64.0) 
 		{
-			if (g_bHiddenSticky || g_fHiddenStamina < g_fCV_hidden_pouncetime*0.7) 
+			if (g_bHiddenSticky) 
 			{
 				CloseHandle(ray);
 				return 0;
 			}
 			
 			g_bHiddenSticky=true;
-			if (GetEntityMoveType(g_iTheCurrentHidden)!=MOVETYPE_NONE) 
-			{
-				SetEntityMoveType(g_iTheCurrentHidden, MOVETYPE_NONE);
-			}
+			SetEntityMoveType(g_iTheCurrentHidden, MOVETYPE_NONE);
+			
 			CloseHandle(ray);
 			return 1;
 		} 
@@ -1582,23 +1574,23 @@ int HiddenStick()
 		return -1;
 	}
 }
-// pounce end
+//unstick the person
 void HiddenUnstick() 
 {
 	g_bHiddenSticky=false;
 	if (GetEntityMoveType(g_iTheCurrentHidden) == MOVETYPE_NONE) 
 	{
 		SetEntityMoveType(g_iTheCurrentHidden, MOVETYPE_WALK);
-		float vel[3];
+		float vel[3] = 0.0;
 		TeleportEntity(g_iTheCurrentHidden, NULL_VECTOR, NULL_VECTOR, vel);
 	}
 }
-
+//give vision
 void GiveHiddenVision(int i) 
 {
 	OverlayCommand(i, "effects/combine_binocoverlay");
 }
-
+//remove it
 void RemoveHiddenVision(int i) 
 {
 	OverlayCommand(i, "\"\"");
@@ -1612,44 +1604,45 @@ void ShowHiddenHP(float duration)
 	}
 	
 	int perc = RoundToCeil(float(g_iHiddenCurrentHp)/float(g_iHiddenHpMax)*100.0);
-	
-	if (perc > 60.0) 
+	int ponc = RoundToCeil(g_fHiddenStamina/g_fCV_hidden_stamina*100.0);
+	int cbomb = RoundToCeil(100.0-g_fHiddenBomb/g_fCV_hidden_bombtime*100.0);
+	float starv = g_fHiddenInvisibility/g_fCV_hidden_starvationtime*100.0; 
+	int hung = RoundToCeil(100.0-starv);
+
+	if (perc > 25.0) 
 	{
-		SetHudTextParams(-1.0, 0.1, duration, 10, 255, 10, 255, 0, 0.0, 0.0, 0.0);
-	} 
-	else if (perc > 30.0) 
-	{
-		SetHudTextParams(-1.0, 0.1, duration, 255, 127, 10, 255, 0, 0.0, 0.0, 0.0);
+		SetHudTextParams(-1.0, 0.1, duration, 10, 255, 10, 255, 1, 0.0, 0.0, 0.0);
 	} 
 	else 
 	{
-		SetHudTextParams(-1.0, 0.1, duration, 255, 10, 10, 255, 0, 0.0, 0.0, 0.0);
+		SetHudTextParams(-1.0, 0.1, duration, 255, 10, 10, 255, 1, 0.0, 0.0, 0.0);
 	}
 	
 	for (int i = 1; i <= MaxClients; i++)
 	{
-		if (IsPlayerHereLoopCheck(i) && !IsFakeClient(i) && GetClientTeam(i) > 0 && i != g_iTheCurrentHidden)
+		if (IsPlayerHereLoopCheck(i) && !IsFakeClient(i) && GetClientTeam(i) > 0 && perc != 0.0)
 		{
-			ShowHudText(i, 0, "The Hidden's Health: %.0i%%", perc);
+			if(i != g_iTheCurrentHidden)
+			{
+				ShowHudText(i, 0, "The Hidden's Health: %.0i%%", perc);
+			}
+			else
+			{
+				ShowHudText(g_iTheCurrentHidden, 0, "Your Health: %.0i%%", perc);
+			
+				SetHudTextParams(-1.0, 0.125, duration, 10, 255, 127, 255, 1, 0.0, 0.0, 0.0);
+				ShowHudText(g_iTheCurrentHidden, 1, "Stamina: %.0i%%", ponc);
+				
+				SetHudTextParams(-1.0, 0.150, duration, 10, 127, 255, 255, 1, 0.0, 0.0, 0.0);
+				ShowHudText(g_iTheCurrentHidden, 2, "Cluster Bomb: %.0i%%", cbomb);
+				
+				SetHudTextParams(-1.0, 0.175, duration, 127, 10, 255, 255, 1, 0.0, 0.0, 0.0);
+				ShowHudText(g_iTheCurrentHidden, 3, "Hunger: %.0i%%", hung);
+				
+				SetEntPropFloat(g_iTheCurrentHidden, Prop_Send, "m_flCloakMeter", starv);
+			}
 		}
-	} 	
-	
-	if (IsPlayerHere(g_iTheCurrentHidden) && !IsFakeClient(g_iTheCurrentHidden)) 
-	{    
-		ShowHudText(g_iTheCurrentHidden, 0, "Your Health: %.0i%%", perc);
-		
-		SetHudTextParams(-1.0, 0.125, duration, 10, 255, 127, 255, 0, 0.0, 0.0, 0.0);
-		int ponc = RoundToCeil(g_fHiddenStamina/g_fCV_hidden_pouncetime*100.0);
-		ShowHudText(g_iTheCurrentHidden, 1, "Pounce: %.0i%%", ponc);
-		
-		SetHudTextParams(-1.0, 0.150, duration, 10, 127, 255, 255, 0, 0.0, 0.0, 0.0);
-		int cbomb = RoundToCeil(100.0-g_fHiddenBomb/g_fCV_hidden_bombtime*100.0);
-		ShowHudText(g_iTheCurrentHidden, 2, "Cluster Bomb: %.0i%%", cbomb);
-		
-		SetHudTextParams(-1.0, 0.175, duration, 127, 10, 255, 255, 0, 0.0, 0.0, 0.0);
-		int hung = RoundToCeil(100.0-g_fHiddenInvisibility/g_fCV_hidden_starvationtime*100.0);
-		ShowHudText(g_iTheCurrentHidden, 3, "Hunger: %.0i%%", hung);
-	}
+	} 
 }
 //give hidden powers
 void GiveHiddenPowers(int i) 
@@ -1662,10 +1655,10 @@ void GiveHiddenPowers(int i)
 	TF2_RemoveWeaponSlot(i, 0); // Revolver
 	//TF2_RemoveWeaponSlot(i, 1); // Sapper	
 	TF2_RemoveWeaponSlot(i, 2); // Knife
+	TF2_RemoveWeaponSlot(i, 3); // Disguise Kit
 	
 	if(!IsFakeClient(i))
 	{
-		TF2_RemoveWeaponSlot(i, 3); // Disguise Kit
 		Client_SetHideHud(i, ( 1<<3 ));
 		GiveHiddenVision(i);
 	}
@@ -1674,10 +1667,8 @@ void GiveHiddenPowers(int i)
 
 	CreateNamedItem(i, 4, "tf_weapon_knife", 1, 0);
 	//CreateNamedItem(i, 1080, "tf_weapon_sapper", 99, 5);
-
-	SetEntPropFloat(i, Prop_Send, "m_flMaxspeed", 400.0);
 }
-//remove hiddens powers
+//remove hidden's powers
 void RemoveHiddenPowers(int i) 
 {
 	RemoveHiddenVision(i);
@@ -1685,7 +1676,7 @@ void RemoveHiddenPowers(int i)
 	SetEntPropFloat(i, Prop_Send, "m_flMaxspeed", 320.0);
 	Client_SetHideHud(i, 0);
 }
-//hide hiddens hud
+//hide hidden's hud
 void Client_SetHideHud(int client, int flags)
 {
 	SetEntProp(client, Prop_Send, "m_iHideHUD", flags);
@@ -1778,9 +1769,9 @@ bool HiddenBombTrigger()
 	}
 	
 	g_fHiddenBomb = g_fCV_hidden_bombtime;
-	
+	Command_ClusterBomb(g_iTheCurrentHidden);	
 	AddHiddenVisible(g_fCV_hidden_visible_bomb);
-	Command_ClusterBomb(g_iTheCurrentHidden);
+
 	return true;
 }
 //enable or disable the plugin - cvar changed
@@ -1846,21 +1837,19 @@ public void cvhook_allowheavy(Handle cvar, const char[] oldVal, const char[] new
 		CPrintToChatAll("{mediumseagreen}[%s]{powderblue} Class: {crimson}Heavy{powderblue} is no longer allowed on the team {crimson}IRIS{powderblue}!", PLUGIN_NAME);
 	}
 }
-//cbomb and bomblets
+//bomb and bomblets
 public Action Command_ClusterBomb(int client)
 {
 	if (IsPlayerHere(client))
 	{
 		if (IsPlayerAlive(client))
 		{
-			//make sure we are not gonna crash the map!
 			if (GetMaxEntities() - GetEntityCount() < 200)
 			{
 				CPrintToChat(client, "{mediumseagreen}[%s]{powderblue} There are too many entities on the map, can't spawn the bomb.", PLUGIN_NAME);
 				return Plugin_Handled;
 			}
 			
-			//get the player position and angles
 			float pos[3];
 			float ePos[3];
 			float angs[3];
@@ -1868,30 +1857,23 @@ public Action Command_ClusterBomb(int client)
 			GetClientEyePosition(client, pos);
 			GetClientEyeAngles(client, angs);
 			GetAngleVectors(angs, vecs, NULL_VECTOR, NULL_VECTOR);
-			
-			//make sure we are not right in front of a wall or something..
 			Handle trace = TR_TraceRayFilterEx(pos, angs, MASK_SHOT, RayType_Infinite, TraceEntityFilterPlayer);
 
 			if (TR_DidHit(trace))
 			{
 				TR_GetEndPosition(ePos, trace);
+				
 				if (GetVectorDistance(ePos, pos, false) < 45.0)
 				{
-					//nope...
 					CPrintToChat(client, "{mediumseagreen}[%s]{powderblue} You are too close to a wall or something like that...", PLUGIN_NAME);
 					return Plugin_Handled;
 				}
 			}
 			
 			CloseHandle(trace);			
-			
-			//set position of throw position in front of you.
 			pos[0] += vecs[0] * 32.0;
 			pos[1] += vecs[1] * 32.0;
-			
-			//set up the throw speed
 			ScaleVector(vecs, GetConVarFloat(g_hCV_hidden_bombthrowspeed));
-			
 			int ent = CreateEntityByName("prop_physics_override");
 			
 			if (IsValidEntity(ent))
@@ -1905,7 +1887,6 @@ public Action Command_ClusterBomb(int client)
 				SetEntProp(ent, Prop_Send, "m_nSkin", 1);
 				DispatchSpawn(ent);
 				TeleportEntity(ent, pos, NULL_VECTOR, vecs);
-				
 				CreateTimer(GetConVarFloat(g_hCV_hidden_bombdetonationdelay), SpawnClusters, ent, TIMER_FLAG_NO_MAPCHANGE);
 			}
 		}
@@ -1927,11 +1908,9 @@ public Action SpawnClusters(Handle timer, any ent)
 		for (int i = 0; i < GetConVarInt(g_hCV_hidden_bombletcount); i++)
 		{
 			float fsv = GetConVarFloat(g_hCV_hidden_bombletspreadvel);
-			float fbv = GetConVarFloat(g_hCV_hidden_bombletvariation);
-			ang[0] = ((GetURandomFloat() + 0.1) * fsv - fsv / 2.0) * ((GetURandomFloat() + 0.1) * fbv);
-			ang[1] = ((GetURandomFloat() + 0.1) * fsv - fsv / 2.0) * ((GetURandomFloat() + 0.1) * fbv);
-			ang[2] = ((GetURandomFloat() + 0.1) * GetConVarFloat(g_hCV_hidden_bombletvertvel)) * ((GetURandomFloat() + 0.1) * fbv);
-			
+			ang[0] = ((GetURandomFloat() + 0.1) * 10.0 + fsv) * ((GetURandomFloat() + 0.1) * 1.0);
+			ang[1] = ((GetURandomFloat() + 0.1) * 10.0 + fsv) * ((GetURandomFloat() + 0.1) * 1.0);
+			ang[2] = ((GetURandomFloat() + 0.1) * GetConVarFloat(g_hCV_hidden_bombletvertvel)) * ((GetURandomFloat() + 0.1) * 1.0);
 			int ent2 = CreateEntityByName("prop_physics_override");
 			
 			if (IsValidEntity(ent2))
@@ -1942,7 +1921,6 @@ public Action SpawnClusters(Handle timer, any ent)
 				SetEntProp(ent2, Prop_Send, "m_iTeamNum", 3);
 				DispatchSpawn(ent2);
 				TeleportEntity(ent2, pos, NULL_VECTOR, ang);
-				
 				CreateTimer((GetURandomFloat() + 0.1) / 2.0 + 0.5, ExplodeBomblet, ent2, TIMER_FLAG_NO_MAPCHANGE);
 			}			
 		}
@@ -1964,7 +1942,7 @@ public Action ExplodeBomblet(Handle timer, any ent)
 		{
 			int tMag = GetConVarInt(g_hCV_hidden_bombletmagnitude);
 			SetEntProp(explosion, Prop_Data, "m_iMagnitude", tMag);
-			DispatchKeyValue(explosion, "spawnflags", "0");
+			DispatchKeyValue(explosion, "spawnflags", "16384");
 			SetEntProp(explosion, Prop_Send, "m_iTeamNum", team);
 			SetEntPropEnt(explosion, Prop_Send, "m_hOwnerEntity", client);
 			SetEntPropEnt(explosion, Prop_Data, "m_hEntityIgnore", client);
@@ -1997,7 +1975,7 @@ bool TraceRay_HitWorld(int entityhit, int mask)
 	
 	return entityhit == 0;
 }
-//creating a weapon using sdkcall
+//creating a weapon
 bool CreateNamedItem(int client, int itemindex, char[] classname, int level, int quality)
 {
 	int weapon=CreateEntityByName(classname);
@@ -2049,16 +2027,17 @@ void SetGameDescription()
 }
 #endif
 //a better way to kill players
-void Client_TakeDamage(int victim,int attacker, int damage,int dmg_type = DMG_GENERIC, const char[] weapon) 
+void Client_TakeDamage(int victim, int attacker, int damage, int dmg_type = DMG_GENERIC, const char[] weapon) 
 { 
-  if(IsPlayerHere(victim)) 
+  if (IsPlayerHere(victim)) 
   { 
     char sDamage[16]; 
     char sDamageType[32]; 
     IntToString(damage, sDamage, sizeof(sDamage)); 
     IntToString(dmg_type, sDamageType, sizeof(sDamageType)); 
-    int index = CreateEntityByName("point_hurt"); 
-    if(IsValidEntity(index)) 
+    int index = CreateEntityByName("point_hurt");
+	
+    if (IsValidEntity(index)) 
     { 
       DispatchKeyValue(victim,"targetname","cod_hurtme"); 
       DispatchKeyValue(index,"DamageTarget","cod_hurtme"); 
